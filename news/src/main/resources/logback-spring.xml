@@ -1,0 +1,181 @@
+<configuration debug="false">
+    <!-- 日志路径 -->
+    <springProperty scope="context" name="app.name" source="spring.application.name"/>
+    <property name="LOG_HOME" value="log"/>
+    <!-- 日志模板 -->
+    <property name="LOG_PATTERN" value="[%d{yyyy-MM-dd HH:mm:ss}] [%thread] %-5level [%c{1}:%L] - %msg%n"/>
+    <!-- 控制所有归档日志文件的总大小 -->
+    <property name="TOTAL_SIZE_CAP" value="2GB"/>
+    <!-- 控制台输出 -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <withJansi>false</withJansi>
+        <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <!--不同业务逻辑的日志打印到不同文件-->
+    <appender name="DEBUG" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <append>true</append>
+        <!--- ThresholdFilter 将高于info级别的日志都输出在同一文件下 LevelFilter 只会输出info级别的日志到文件中 -->
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>DEBUG</level>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/debug/debug_%d{yyyy-MM-dd}_%i.log.zip</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>50MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+            <maxHistory>180</maxHistory>
+            <totalSizeCap>${TOTAL_SIZE_CAP}</totalSizeCap>
+        </rollingPolicy>
+        <encoder charset="UTF-8">
+            <pattern>${LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="INFO" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <append>true</append>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/info/info_%d{yyyy-MM-dd}_%i.log.zip</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>50MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>${TOTAL_SIZE_CAP}</totalSizeCap>
+        </rollingPolicy>
+        <encoder charset="UTF-8">
+            <pattern>${LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="WARN" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <append>true</append>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>WARN</level>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/warn/warn_%d{yyyy-MM-dd}_%i.log.zip</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>50MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>${TOTAL_SIZE_CAP}</totalSizeCap>
+        </rollingPolicy>
+        <encoder charset="UTF-8">
+            <pattern>${LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="ERROR" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <append>true</append>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>ERROR</level>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/error/error_%d{yyyy-MM-dd}_%i.log.zip</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>50MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>${TOTAL_SIZE_CAP}</totalSizeCap>
+        </rollingPolicy>
+        <encoder charset="UTF-8">
+            <pattern>${LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- 异步插入日志 -->
+    <appender name="ASYNC_DEBUG" class="ch.qos.logback.classic.AsyncAppender">
+        <!-- 不丢失日志.默认的,如果队列的80%已满,则会丢弃TRACT、DEBUG、INFO级别的日志 -->
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>true</neverBlock>
+        <!-- 更改默认的队列的深度,该值会影响性能.默认值为256 -->
+        <queueSize>1024</queueSize>
+        <includeCallerData>true</includeCallerData>
+        <!-- 添加附加的appender,最多只能添加一个 -->
+        <appender-ref ref="DEBUG"/>
+    </appender>
+
+    <appender name="ASYNC_INFO" class="ch.qos.logback.classic.AsyncAppender">
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>true</neverBlock>
+        <queueSize>1024</queueSize>
+        <includeCallerData>true</includeCallerData>
+        <appender-ref ref="INFO"/>
+    </appender>
+
+    <appender name="ASYNC_WARN" class="ch.qos.logback.classic.AsyncAppender">
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>true</neverBlock>
+        <queueSize>1024</queueSize>
+        <includeCallerData>true</includeCallerData>
+        <appender-ref ref="WARN"/>
+    </appender>
+
+    <appender name="ASYNC_ERROR" class="ch.qos.logback.classic.AsyncAppender">
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>true</neverBlock>
+        <queueSize>1024</queueSize>
+        <includeCallerData>true</includeCallerData>
+        <appender-ref ref="ERROR"/>
+    </appender>
+
+
+    <!-- 根据spring配置文件中的 ${spring.profile.active} 进行选择对应的配置 -->
+    <root level="INFO">
+        <appender-ref ref="STDOUT"/>
+    </root>
+    <!-- 开发环境 -->
+    <springProfile name="dev">
+        <root level="INFO">
+            <appender-ref ref="STDOUT"/>
+        </root>
+        <logger name="com.quant" level="info" additivity="false">
+            <appender-ref ref="STDOUT"/>
+        </logger>
+    </springProfile>
+    <!-- 测试环境 -->
+    <springProfile name="local">
+        <root level="INFO">
+            <appender-ref ref="STDOUT"/>
+            <appender-ref ref="ASYNC_DEBUG"/>
+            <appender-ref ref="ASYNC_INFO"/>
+            <appender-ref ref="ASYNC_WARN"/>
+            <appender-ref ref="ASYNC_ERROR"/>
+        </root>
+        <logger name="com.quant" level="INFO" additivity="false">
+            <appender-ref ref="STDOUT"/>
+            <appender-ref ref="ASYNC_DEBUG"/>
+            <appender-ref ref="ASYNC_INFO"/>
+            <appender-ref ref="ASYNC_WARN"/>
+            <appender-ref ref="ASYNC_ERROR"/>
+        </logger>
+        <logger name="com.binance.connector" level="WARN" additivity="false">
+            <appender-ref ref="STDOUT"/>
+            <appender-ref ref="ASYNC_DEBUG"/>
+            <appender-ref ref="ASYNC_INFO"/>
+            <appender-ref ref="ASYNC_WARN"/>
+            <appender-ref ref="ASYNC_ERROR"/>
+        </logger>
+    </springProfile>
+    <!-- 生产环境 -->
+    <springProfile name="prod">
+        <root level="INFO">
+            <appender-ref ref="ASYNC_DEBUG"/>
+            <appender-ref ref="ASYNC_INFO"/>
+            <appender-ref ref="ASYNC_WARN"/>
+            <appender-ref ref="ASYNC_ERROR"/>
+        </root>
+        <logger name="com.ll.news" level="INFO" />
+        <logger name="com.binance.connector" level="WARN"/>
+    </springProfile>
+
+</configuration>

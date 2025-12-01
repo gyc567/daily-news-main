@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ll.news.bitcoin.mapper.BitcoinEntitiesSummaryMapper">
+
+    <resultMap type="com.ll.news.bitcoin.domain.BitcoinEntitiesSummary" id="BitcoinEntitiesSummaryResult">
+        <result property="id"    column="id"    />
+        <result property="entityQuantity"    column="entity_quantity"    />
+        <result property="totalBtc"    column="total_btc"    />
+        <result property="percentOf21m"    column="percent_of_21m"    />
+        <result property="lastUpdated"    column="last_updated"    />
+        <result property="createdAt"    column="created_at"    />
+        <result property="updatedAt"    column="updated_at"    />
+    </resultMap>
+
+    <sql id="selectBitcoinEntitiesSummaryVo">
+        select id, entity_quantity, total_btc, percent_of_21m, last_updated, created_at, updated_at from bitcoin_entities_summary
+    </sql>
+
+    <select id="selectBitcoinEntitiesSummaryList" parameterType="com.ll.news.bitcoin.domain.BitcoinEntitiesSummary" resultMap="BitcoinEntitiesSummaryResult">
+        <include refid="selectBitcoinEntitiesSummaryVo"/>
+        <where>
+            <if test="entityQuantity != null "> and entity_quantity = #{entityQuantity}</if>
+            <if test="totalBtc != null "> and total_btc = #{totalBtc}</if>
+            <if test="percentOf21m != null "> and percent_of_21m = #{percentOf21m}</if>
+            <if test="lastUpdated != null "> and last_updated = #{lastUpdated}</if>
+            <if test="createdAt != null "> and created_at = #{createdAt}</if>
+            <if test="updatedAt != null "> and updated_at = #{updatedAt}</if>
+        </where>
+    </select>
+
+    <select id="selectBitcoinEntitiesSummaryById" parameterType="Long" resultMap="BitcoinEntitiesSummaryResult">
+        <include refid="selectBitcoinEntitiesSummaryVo"/>
+        where id = #{id}
+    </select>
+
+    <insert id="insertBitcoinEntitiesSummary" parameterType="com.ll.news.bitcoin.domain.BitcoinEntitiesSummary" useGeneratedKeys="true" keyProperty="id">
+        insert into bitcoin_entities_summary
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="entityQuantity != null">entity_quantity,</if>
+            <if test="totalBtc != null">total_btc,</if>
+            <if test="percentOf21m != null">percent_of_21m,</if>
+            <if test="lastUpdated != null">last_updated,</if>
+            <if test="createdAt != null">created_at,</if>
+            <if test="updatedAt != null">updated_at,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="entityQuantity != null">#{entityQuantity},</if>
+            <if test="totalBtc != null">#{totalBtc},</if>
+            <if test="percentOf21m != null">#{percentOf21m},</if>
+            <if test="lastUpdated != null">#{lastUpdated},</if>
+            <if test="createdAt != null">#{createdAt},</if>
+            <if test="updatedAt != null">#{updatedAt},</if>
+         </trim>
+    </insert>
+
+    <update id="updateBitcoinEntitiesSummary" parameterType="com.ll.news.bitcoin.domain.BitcoinEntitiesSummary">
+        update bitcoin_entities_summary
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="entityQuantity != null">entity_quantity = #{entityQuantity},</if>
+            <if test="totalBtc != null">total_btc = #{totalBtc},</if>
+            <if test="percentOf21m != null">percent_of_21m = #{percentOf21m},</if>
+            <if test="lastUpdated != null">last_updated = #{lastUpdated},</if>
+            <if test="createdAt != null">created_at = #{createdAt},</if>
+            <if test="updatedAt != null">updated_at = #{updatedAt},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteBitcoinEntitiesSummaryById" parameterType="Long">
+        delete from bitcoin_entities_summary where id = #{id}
+    </delete>
+
+    <delete id="deleteBitcoinEntitiesSummaryByIds" parameterType="String">
+        delete from bitcoin_entities_summary where id in
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

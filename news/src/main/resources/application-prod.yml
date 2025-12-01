@@ -1,0 +1,38 @@
+spring:
+  datasource:
+    dynamic:
+      primary: daily
+      strict: false
+      grace-destroy: true
+      datasource:
+        daily:
+          driver-class-name: com.mysql.cj.jdbc.Driver
+          password: Quant@123
+          url: jdbc:mysql://172.31.29.166:3306/daily-news?useSSL=false&serverTimezone=UTC
+          username: Quant
+        analysis:
+          driver-class-name: com.mysql.cj.jdbc.Driver
+          url: jdbc:mysql://172.31.19.64:3306/financial_analytics?useSSL=false&useUnicode=true&characterEncoding=utf-8&serverTimezone=UTC
+          username: Quant
+          password: Quant@123
+      hikari:
+        max-pool-size: 40
+
+
+app:
+  telegram:
+    token: 7270949757:AAGM2BrMtVFpqNypOAS8PfIYHuvUTlYOM6Q
+    chatId: -1002191041553
+
+# 大额成交监听
+binance:
+  agg-trades:
+    tg:
+      token: 7800570468:AAFunJqTi_qmWH3zAy7u31TGo2wK7w0hrfc
+      chatId: -1002555659999
+    seconds: 60
+    count: 5
+    limit: 1.0
+    amt:
+      ETH: 2000
+      BTC: 50

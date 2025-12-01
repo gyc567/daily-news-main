@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ll.news.mapper.NewsMapper">
+  <resultMap id="BaseResultMap" type="com.ll.news.model.News">
+    <!--@mbg.generated-->
+    <!--@Table news-->
+    <id column="id" jdbcType="BIGINT" property="id" />
+    <result column="site_source" jdbcType="VARCHAR" property="siteSource" />
+    <result column="publish_time" jdbcType="BIGINT" property="publishTime" />
+    <result column="status" jdbcType="TINYINT" property="status" />
+    <result column="title" jdbcType="VARCHAR" property="title" />
+    <result column="link" jdbcType="VARCHAR" property="link" />
+    <result column="tags" jdbcType="LONGVARCHAR" property="tags" />
+    <result column="content" jdbcType="LONGVARCHAR" property="content" />
+  </resultMap>
+  <sql id="Base_Column_List">
+    <!--@mbg.generated-->
+    id, site_source, publish_time, `status`, title, link, tags, content
+  </sql>
+</mapper>

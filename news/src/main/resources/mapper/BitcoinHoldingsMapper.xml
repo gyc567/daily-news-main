@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ll.news.bitcoin.mapper.BitcoinHoldingsMapper">
+
+    <resultMap type="com.ll.news.bitcoin.domain.BitcoinHoldings" id="BitcoinHoldingsResult">
+        <result property="id"    column="id"    />
+        <result property="summaryId"    column="summary_id"    />
+        <result property="category"    column="category"    />
+        <result property="btcAmount"    column="btc_amount"    />
+        <result property="percentOf21m"    column="percent_of_21m"    />
+        <result property="lastUpdated"    column="last_updated"    />
+        <result property="createdAt"    column="created_at"    />
+        <result property="updatedAt"    column="updated_at"    />
+    </resultMap>
+
+    <sql id="selectBitcoinHoldingsVo">
+        select id, summary_id, category, btc_amount, percent_of_21m, last_updated, created_at, updated_at from bitcoin_holdings
+    </sql>
+
+    <select id="selectBitcoinHoldingsList" parameterType="com.ll.news.bitcoin.domain.BitcoinHoldings" resultMap="BitcoinHoldingsResult">
+        <include refid="selectBitcoinHoldingsVo"/>
+        <where>
+            <if test="summaryId != null "> and summary_id = #{summaryId}</if>
+            <if test="category != null  and category != ''"> and category = #{category}</if>
+            <if test="btcAmount != null "> and btc_amount = #{btcAmount}</if>
+            <if test="percentOf21m != null "> and percent_of_21m = #{percentOf21m}</if>
+            <if test="lastUpdated != null "> and last_updated = #{lastUpdated}</if>
+            <if test="createdAt != null "> and created_at = #{createdAt}</if>
+            <if test="updatedAt != null "> and updated_at = #{updatedAt}</if>
+        </where>
+    </select>
+
+    <select id="selectBitcoinHoldingsById" parameterType="Long" resultMap="BitcoinHoldingsResult">
+        <include refid="selectBitcoinHoldingsVo"/>
+        where id = #{id}
+    </select>
+
+    <insert id="insertBitcoinHoldings" parameterType="com.ll.news.bitcoin.domain.BitcoinHoldings" useGeneratedKeys="true" keyProperty="id">
+        insert into bitcoin_holdings
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="summaryId != null">summary_id,</if>
+            <if test="category != null and category != ''">category,</if>
+            <if test="btcAmount != null">btc_amount,</if>
+            <if test="percentOf21m != null">percent_of_21m,</if>
+            <if test="lastUpdated != null">last_updated,</if>
+            <if test="createdAt != null">created_at,</if>
+            <if test="updatedAt != null">updated_at,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="summaryId != null">#{summaryId},</if>
+            <if test="category != null and category != ''">#{category},</if>
+            <if test="btcAmount != null">#{btcAmount},</if>
+            <if test="percentOf21m != null">#{percentOf21m},</if>
+            <if test="lastUpdated != null">#{lastUpdated},</if>
+            <if test="createdAt != null">#{createdAt},</if>
+            <if test="updatedAt != null">#{updatedAt},</if>
+         </trim>
+    </insert>
+
+    <update id="updateBitcoinHoldings" parameterType="com.ll.news.bitcoin.domain.BitcoinHoldings">
+        update bitcoin_holdings
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="summaryId != null">summary_id = #{summaryId},</if>
+            <if test="category != null and category != ''">category = #{category},</if>
+            <if test="btcAmount != null">btc_amount = #{btcAmount},</if>
+            <if test="percentOf21m != null">percent_of_21m = #{percentOf21m},</if>
+            <if test="lastUpdated != null">last_updated = #{lastUpdated},</if>
+            <if test="createdAt != null">created_at = #{createdAt},</if>
+            <if test="updatedAt != null">updated_at = #{updatedAt},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteBitcoinHoldingsById" parameterType="Long">
+        delete from bitcoin_holdings where id = #{id}
+    </delete>
+
+    <delete id="deleteBitcoinHoldingsByIds" parameterType="String">
+        delete from bitcoin_holdings where id in
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

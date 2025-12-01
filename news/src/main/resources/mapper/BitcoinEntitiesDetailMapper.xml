@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ll.news.bitcoin.mapper.BitcoinEntitiesDetailMapper">
+
+    <resultMap type="com.ll.news.bitcoin.domain.BitcoinEntitiesDetail" id="BitcoinEntitiesDetailResult">
+        <result property="id"    column="id"    />
+        <result property="holdingId"    column="holding_id"    />
+        <result property="entityName"    column="entity_name"    />
+        <result property="country"    column="country"    />
+        <result property="entityType"    column="entity_type"    />
+        <result property="symbolExchange"    column="symbol_exchange"    />
+        <result property="btcAmount"    column="btc_amount"    />
+        <result property="percentOf21m"    column="percent_of_21m"    />
+        <result property="lastUpdated"    column="last_updated"    />
+        <result property="createdAt"    column="created_at"    />
+        <result property="updatedAt"    column="updated_at"    />
+    </resultMap>
+
+    <sql id="selectBitcoinEntitiesDetailVo">
+        select id, holding_id, entity_name, country, entity_type, symbol_exchange, btc_amount, percent_of_21m, last_updated, created_at, updated_at from bitcoin_entities_detail
+    </sql>
+
+    <select id="selectBitcoinEntitiesDetailList" parameterType="com.ll.news.bitcoin.domain.BitcoinEntitiesDetail" resultMap="BitcoinEntitiesDetailResult">
+        <include refid="selectBitcoinEntitiesDetailVo"/>
+        <where>
+            <if test="holdingId != null "> and holding_id = #{holdingId}</if>
+            <if test="entityName != null  and entityName != ''"> and entity_name like concat('%', #{entityName}, '%')</if>
+            <if test="country != null  and country != ''"> and country = #{country}</if>
+            <if test="entityType != null "> and entity_type = #{entityType}</if>
+            <if test="symbolExchange != null  and symbolExchange != ''"> and symbol_exchange = #{symbolExchange}</if>
+            <if test="btcAmount != null "> and btc_amount = #{btcAmount}</if>
+            <if test="percentOf21m != null "> and percent_of_21m = #{percentOf21m}</if>
+            <if test="lastUpdated != null "> and last_updated = #{lastUpdated}</if>
+            <if test="createdAt != null "> and created_at = #{createdAt}</if>
+            <if test="updatedAt != null "> and updated_at = #{updatedAt}</if>
+        </where>
+    </select>
+
+    <select id="selectBitcoinEntitiesDetailById" parameterType="Long" resultMap="BitcoinEntitiesDetailResult">
+        <include refid="selectBitcoinEntitiesDetailVo"/>
+        where id = #{id}
+    </select>
+
+    <insert id="insertBitcoinEntitiesDetail" parameterType="com.ll.news.bitcoin.domain.BitcoinEntitiesDetail" useGeneratedKeys="true" keyProperty="id">
+        insert into bitcoin_entities_detail
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="holdingId != null">holding_id,</if>
+            <if test="entityName != null and entityName != ''">entity_name,</if>
+            <if test="country != null and country != ''">country,</if>
+            <if test="entityType != null">entity_type,</if>
+            <if test="symbolExchange != null and symbolExchange != ''">symbol_exchange,</if>
+            <if test="btcAmount != null">btc_amount,</if>
+            <if test="percentOf21m != null">percent_of_21m,</if>
+            <if test="lastUpdated != null">last_updated,</if>
+            <if test="createdAt != null">created_at,</if>
+            <if test="updatedAt != null">updated_at,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="holdingId != null">#{holdingId},</if>
+            <if test="entityName != null and entityName != ''">#{entityName},</if>
+            <if test="country != null and country != ''">#{country},</if>
+            <if test="entityType != null">#{entityType},</if>
+            <if test="symbolExchange != null and symbolExchange != ''">#{symbolExchange},</if>
+            <if test="btcAmount != null">#{btcAmount},</if>
+            <if test="percentOf21m != null">#{percentOf21m},</if>
+            <if test="lastUpdated != null">#{lastUpdated},</if>
+            <if test="createdAt != null">#{createdAt},</if>
+            <if test="updatedAt != null">#{updatedAt},</if>
+         </trim>
+    </insert>
+
+    <update id="updateBitcoinEntitiesDetail" parameterType="com.ll.news.bitcoin.domain.BitcoinEntitiesDetail">
+        update bitcoin_entities_detail
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="holdingId != null">holding_id = #{holdingId},</if>
+            <if test="entityName != null and entityName != ''">entity_name = #{entityName},</if>
+            <if test="country != null and country != ''">country = #{country},</if>
+            <if test="entityType != null">entity_type = #{entityType},</if>
+            <if test="symbolExchange != null and symbolExchange != ''">symbol_exchange = #{symbolExchange},</if>
+            <if test="btcAmount != null">btc_amount = #{btcAmount},</if>
+            <if test="percentOf21m != null">percent_of_21m = #{percentOf21m},</if>
+            <if test="lastUpdated != null">last_updated = #{lastUpdated},</if>
+            <if test="createdAt != null">created_at = #{createdAt},</if>
+            <if test="updatedAt != null">updated_at = #{updatedAt},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteBitcoinEntitiesDetailById" parameterType="Long">
+        delete from bitcoin_entities_detail where id = #{id}
+    </delete>
+
+    <delete id="deleteBitcoinEntitiesDetailByIds" parameterType="String">
+        delete from bitcoin_entities_detail where id in
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>
