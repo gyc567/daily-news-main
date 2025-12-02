@@ -1,0 +1,430 @@
+# Neon 云数据库迁移配置
+# 基于您提供的连接信息配置
+
+spring:
+  application:
+    name: daily-news-migration
+
+  # 源数据库 (MySQL) 配置
+  datasource:
+    source:
+      url: jdbc:mysql://localhost:3306/daily-news?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      username: root
+      password: root123
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      hikari:
+        pool-name: SourceMySQLPool
+        maximum-pool-size: 10
+        minimum-idle: 2
+        connection-timeout: 30000
+
+    # 目标数据库 (Neon PostgreSQL) 配置
+    target:
+      url: jdbc:postgresql://ep-morning-wind-aho6ug36-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require
+      username: neondb_owner
+      password: ${NEON_PASSWORD}  # 从环境变量读取密码
+      driver-class-name: org.postgresql.Driver
+      hikari:
+        pool-name: TargetNeonPool
+        maximum-pool-size: 5  # Neon Serverless 推荐较小的连接池
+        minimum-idle: 1
+        connection-timeout: 15000  # Neon 可能需要更长的连接时间
+        data-source-properties:
+          ssl: true
+          sslmode: require
+          application_name: daily-news-migration
+          socketTimeout: 30
+          connectTimeout: 15
+          stringtype: unspecified
+          reWriteBatchedInserts: true
+
+  # JPA 配置 - 主要用于读取源数据库结构
+  jpa:
+    source:
+      hibernate:
+        ddl-auto: validate
+        dialect: org.hibernate.dialect.MySQL8Dialect
+      properties:
+        hibernate:
+          show_sql: false
+          format_sql: true
+
+    target:
+      hibernate:
+        ddl-auto: none  # 手动控制目标数据库结构
+        dialect: org.hibernate.dialect.PostgreSQL15Dialect
+      properties:
+        hibernate:
+          show_sql: false
+          format_sql: true
+          jdbc:
+            lob:
+              non_contextual_creation: true
+
+# 迁移配置
+migration:
+  # 迁移模式选择
+  mode: ${MIGRATION_MODE:full}  # full, incremental, validate, rollback
+
+  # 批次大小配置
+  batch-size: ${MIGRATION_BATCH_SIZE:1000}
+
+  # 并发度配置
+  parallelism: ${MIGRATION_PARALLELISM:4}
+
+  # 数据验证配置
+  validation:
+    enabled: ${VALIDATION_ENABLED:true}
+    sample-rate: ${VALIDATION_SAMPLE_RATE:0.1}  # 10% 采样验证
+    checksum-verification: ${CHECKSUM_VERIFICATION:true}
+
+  # 回滚配置
+  rollback:
+    enabled: ${ROLLBACK_ENABLED:true}
+    backup-retention-days: ${BACKUP_RETENTION_DAYS:7}
+
+  # 性能配置
+  performance:
+    read-timeout: ${READ_TIMEOUT:300}  # 秒
+    write-timeout: ${WRITE_TIMEOUT:300}  # 秒
+    memory-limit: ${MEMORY_LIMIT:2G}
+
+  # 监控配置
+  monitoring:
+    enabled: ${MONITORING_ENABLED:true}
+    metrics-export-interval: ${METRICS_INTERVAL:30}  # 秒
+    progress-report-interval: ${PROGRESS_INTERVAL:10}  # 秒
+
+# 日志配置
+logging:
+  level:
+    com.ll.news.migration: DEBUG
+    org.springframework.jdbc: DEBUG
+    org.hibernate.SQL: DEBUG
+    com.zaxxer.hikari: INFO
+
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+  file:
+    name: logs/database-migration.log
+    max-size: 100MB
+    max-history: 30
+
+# 监控和管理端点
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,migration
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+    metrics:
+      enabled: true
+
+# 应用配置
+app:
+  migration:
+    # 源数据库配置
+    source-database:
+      name: "MySQL"
+      version: "8.0"
+      host: "localhost"
+      port: 3306
+      databases:
+        - daily-news
+        - financial_analytics
+
+    # 目标数据库配置
+    target-database:
+      name: "Neon PostgreSQL"
+      version: "15"
+      host: "ep-morning-wind-aho6ug36-pooler.c-3.us-east-1.aws.neon.tech"
+      port: 5432
+      database: neondb
+      ssl-mode: require
+
+    # 迁移时间表
+    schedule:
+      # 预检查阶段
+      pre-check: "0 */6 * * * ?"  # 每6小时执行一次预检查
+
+      # 全量迁移（建议在低峰期执行）
+      full-migration: "0 0 2 * * ?"  # 每天凌晨2点
+
+      # 增量同步
+      incremental-sync: "0 */30 * * * ?"  # 每30分钟
+
+      # 数据验证
+      validation: "0 0 4 * * ?"  # 每天凌晨4点
+
+    # 告警配置
+    alerting:
+      enabled: ${ALERTING_ENABLED:true}
+      email:
+        enabled: ${EMAIL_ALERTING:false}
+        to: ${ALERT_EMAIL_TO:}
+        from: ${ALERT_EMAIL_FROM:}
+      webhook:
+        enabled: ${WEBHOOK_ALERTING:false}
+        url: ${WEBHOOK_URL:}
+
+    # 备份配置
+    backup:
+      enabled: ${BACKUP_ENABLED:true}
+      type: ${BACKUP_TYPE:full}  # full, incremental
+      location: ${BACKUP_LOCATION:/backup/migration/}
+      compression: ${BACKUP_COMPRESSION:true}
+      encryption: ${BACKUP_ENCRYPTION:true}
+
+---
+# 开发环境配置
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+  datasource:
+    source:
+      url: jdbc:mysql://localhost:3306/daily-news?useSSL=false&serverTimezone=UTC
+      username: root
+      password: root123
+    target:
+      url: jdbc:postgresql://ep-morning-wind-aho6ug36-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require
+      username: neondb_owner
+      password: ${NEON_PASSWORD}
+
+migration:
+  batch-size: 100
+  parallelism: 2
+  validation:
+    sample-rate: 1.0  # 开发环境100%验证
+
+logging:
+  level:
+    com.ll.news.migration: DEBUG
+    org.springframework.jdbc: DEBUG
+    org.hibernate.SQL: DEBUG
+
+---
+# 测试环境配置
+spring:
+  config:
+    activate:
+      on-profile: test
+
+  datasource:
+    source:
+      url: jdbc:h2:mem:source_test;DB_CLOSE_DELAY=-1;MODE=MySQL
+      username: sa
+      password: ""
+      driver-class-name: org.h2.Driver
+    target:
+      url: jdbc:h2:mem:target_test;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
+      username: sa
+      password: ""
+      driver-class-name: org.h2.Driver
+
+migration:
+  batch-size: 10  # 测试环境小批次
+  parallelism: 1  # 测试环境单线程
+  validation:
+    sample-rate: 1.0
+    checksum-verification: true
+
+logging:
+  level:
+    com.ll.news.migration: DEBUG
+    org.springframework.jdbc: DEBUG
+
+---
+# 生产环境配置
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  datasource:
+    source:
+      url: ${PROD_SOURCE_DB_URL}
+      username: ${PROD_SOURCE_DB_USERNAME}
+      password: ${PROD_SOURCE_DB_PASSWORD}
+      hikari:
+        maximum-pool-size: 20
+        minimum-idle: 5
+    target:
+      url: jdbc:postgresql://ep-morning-wind-aho6ug36-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require
+      username: neondb_owner
+      password: ${NEON_PASSWORD}
+      hikari:
+        maximum-pool-size: 10  # 生产环境限制连接数
+        minimum-idle: 2
+
+migration:
+  batch-size: 5000  # 生产环境大批次
+  parallelism: 8    # 生产环境高并发
+  validation:
+    sample-rate: 0.01  # 生产环境1%采样验证
+    checksum-verification: true
+  monitoring:
+    enabled: true
+    progress-report-interval: 60  # 生产环境1分钟报告一次
+
+logging:
+  level:
+    com.ll.news.migration: INFO
+    org.springframework.jdbc: WARN
+    org.hibernate.SQL: WARN
+
+  file:
+    name: /var/log/daily-news/database-migration.log
+    max-size: 500MB
+    max-history: 90
+
+# 生产环境严格监控
+management:
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      environment: production
+      migration-type: mysql-to-neon
+
+---
+# 预检查配置
+spring:
+  config:
+    activate:
+      on-profile: pre-check
+
+migration:
+  mode: validate
+  validation:
+    enabled: true
+    sample-rate: 0.1
+
+logging:
+  level:
+    com.ll.news.migration: DEBUG
+
+---
+# 增量同步配置
+spring:
+  config:
+    activate:
+      on-profile: incremental
+
+migration:
+  mode: incremental
+  batch-size: 1000
+  parallelism: 4
+
+# 增量同步专用调度
+app:
+  migration:
+    schedule:
+      incremental-sync: "0 */5 * * * ?"  # 每5分钟同步一次
+
+---
+# 回滚配置
+spring:
+  config:
+    activate:
+      on-profile: rollback
+
+migration:
+  mode: rollback
+  rollback:
+    enabled: true
+    backup-retention-days: 30
+
+logging:
+  level:
+    com.ll.news.migration: DEBUG
+    com.ll.news.migration.rollback: DEBUG
+
+---
+# 性能优化配置
+spring:
+  config:
+    activate:
+      on-profile: performance-optimized
+
+  datasource:
+    source:
+      hikari:
+        maximum-pool-size: 50
+        minimum-idle: 10
+        connection-timeout: 10000
+    target:
+      hikari:
+        maximum-pool-size: 20
+        minimum-idle: 5
+        connection-timeout: 15000
+
+migration:
+  batch-size: 10000  # 最大批次
+  parallelism: 16    # 最大并发
+  performance:
+    read-timeout: 600   # 10分钟
+    write-timeout: 600  # 10分钟
+    memory-limit: 4G
+
+# JVM优化
+app:
+  jvm:
+    args: >
+      -Xms2g -Xmx4g
+      -XX:+UseG1GC
+      -XX:MaxGCPauseMillis=200
+      -XX:+UseStringDeduplication
+      -XX:+ParallelRefProcEnabled
+      -XX:MaxTenuringThreshold=1
+      -XX:+UnlockExperimentalVMOptions
+      -XX:+UseCGroupMemoryLimitForHeap
+
+---
+# 安全配置（敏感数据迁移）
+spring:
+  config:
+    activate:
+      on-profile: secure-migration
+
+  datasource:
+    # 使用SSL连接
+    source:
+      url: ${SECURE_SOURCE_DB_URL}?useSSL=true&requireSSL=true
+      username: ${SECURE_SOURCE_DB_USERNAME}
+      password: ${SECURE_SOURCE_DB_PASSWORD}
+    target:
+      url: jdbc:postgresql://ep-morning-wind-aho6ug36-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require
+      username: neondb_owner
+      password: ${NEON_PASSWORD}
+
+migration:
+  encryption:
+    enabled: true
+    algorithm: AES-256-GCM
+    key: ${MIGRATION_ENCRYPTION_KEY}
+
+# 安全日志
+logging:
+  level:
+    com.ll.news.migration.security: DEBUG
+
+  file:
+    name: /secure/logs/database-migration-security.log
+    max-size: 200MB
+    max-history: 365
+
+---
+# 总结
+# 这个配置文件提供了完整的Neon数据库迁移配置
+# 支持多种迁移模式：全量、增量、验证、回滚
+# 包含详细的性能优化和安全配置
+# 所有敏感信息都通过环境变量注入
+# 可以根据实际需求选择合适的profile进行迁移

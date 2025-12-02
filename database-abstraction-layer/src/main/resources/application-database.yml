@@ -1,0 +1,613 @@
+# 数据库抽象层配置
+# 支持多种数据库的统一配置
+# 遵循KISS原则：简单、清晰、易于理解
+
+spring:
+  datasource:
+    # 数据库类型配置
+    # 支持的类型：mysql, postgresql, neon, h2
+    type: ${DB_TYPE:mysql}
+
+    # 连接信息（通过环境变量注入，保证安全）
+    url: ${DB_URL:jdbc:mysql://localhost:3306/daily-news?useSSL=false&serverTimezone=UTC}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root123}
+    driver-class-name: ${DB_DRIVER:com.mysql.cj.jdbc.Driver}
+
+    # HikariCP 连接池配置
+    hikari:
+      # 连接池名称，用于监控和调试
+      pool-name: DailyNewsPool
+
+      # 连接池大小配置
+      maximum-pool-size: ${DB_MAX_POOL_SIZE:20}
+      minimum-idle: ${DB_MIN_IDLE:5}
+
+      # 超时配置
+      connection-timeout: ${DB_CONNECTION_TIMEOUT:30000}
+      idle-timeout: ${DB_IDLE_TIMEOUT:600000}
+      max-lifetime: ${DB_MAX_LIFETIME:1800000}
+      leak-detection-threshold: ${DB_LEAK_DETECTION_THRESHOLD:60000}
+
+      # 数据库特有配置
+      data-source-properties:
+        # MySQL 特有配置
+        cachePrepStmts: true
+        prepStmtCacheSize: 250
+        prepStmtCacheSqlLimit: 2048
+        useServerPrepStmts: true
+
+        # PostgreSQL/Neon 特有配置
+        stringtype: unspecified
+        reWriteBatchedInserts: true
+
+        # 通用配置
+        socketTimeout: 30
+        connectTimeout: 30
+
+  jpa:
+    # JPA 通用配置
+    database-platform: ${JPA_DATABASE_PLATFORM:}
+    generate-ddl: false
+    hibernate:
+      ddl-auto: validate  # 生产环境禁止自动DDL
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+        implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyJpaImpl
+
+    # JPA 属性配置
+    properties:
+      hibernate:
+        # 方言配置（根据数据库类型自动选择）
+        dialect: ${HIBERNATE_DIALECT:}
+
+        # SQL 输出配置
+        show_sql: ${SHOW_SQL:false}
+        format_sql: ${FORMAT_SQL:true}
+        use_sql_comments: ${SQL_COMMENTS:false}
+
+        # 批处理配置
+        jdbc:
+          batch_size: ${BATCH_SIZE:25}
+          order_inserts: true
+          order_updates: true
+          batch_versioned_data: true
+
+        # 缓存配置
+        cache:
+          use_second_level_cache: true
+          use_query_cache: true
+          region:
+            factory_class: org.hibernate.cache.jcache.JCacheRegionFactory
+
+        # 统计和监控
+        generate_statistics: ${GENERATE_STATISTICS:false}
+
+        # 数据库特有配置
+        jdbc:
+          lob:
+            non_contextual_creation: true  # PostgreSQL 需要
+
+        # 类型配置
+        temp:
+          use_jdbc_metadata_defaults: false  # 提高启动性能
+
+    # 实体扫描配置
+    open-in-view: false  # 防止懒加载异常，推荐设为false
+
+# 数据库抽象层特有配置
+database:
+  abstraction:
+    # 是否启用查询性能监控
+    query-performance-monitoring: ${QUERY_MONITORING:true}
+
+    # 慢查询阈值（毫秒）
+    slow-query-threshold: ${SLOW_QUERY_THRESHOLD:1000}
+
+    # 是否启用数据库健康检查
+    health-check-enabled: ${DB_HEALTH_CHECK:true}
+
+    # 健康检查间隔（秒）
+    health-check-interval: ${DB_HEALTH_CHECK_INTERVAL:30}
+
+    # 是否启用连接池监控
+    pool-monitoring-enabled: ${POOL_MONITORING:true}
+
+    # 数据库迁移配置
+    migration:
+      enabled: ${DB_MIGRATION_ENABLED:true}
+      validate-on-migrate: ${VALIDATE_ON_MIGRATE:true}
+      baseline-on-migrate: ${BASELINE_ON_MIGRATE:true}
+
+# 日志配置
+logging:
+  level:
+    com.ll.news.database: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.springframework.jdbc.core: DEBUG
+    com.zaxxer.hikari: DEBUG
+
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+  file:
+    name: logs/database-abstraction.log
+
+# 监控配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,datasource
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+    datasource:
+      enabled: true
+  metrics:
+    export:
+      simple:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+      database-type: ${spring.datasource.type}
+
+---
+# 开发环境配置
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+  jpa:
+    hibernate:
+      ddl-auto: update  # 开发环境允许自动更新表结构
+    properties:
+      hibernate:
+        show_sql: true
+        format_sql: true
+        use_sql_comments: true
+        generate_statistics: true
+
+logging:
+  level:
+    com.ll.news.database: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+
+---
+# 测试环境配置
+spring:
+  config:
+    activate:
+      on-profile: test
+
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+    type: h2
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop  # 测试环境每次都重新创建表
+    properties:
+      hibernate:
+        show_sql: false  # 测试环境不显示SQL，减少噪音
+        format_sql: true
+        dialect: org.hibernate.dialect.H2Dialect
+
+# 测试时的特殊配置
+database:
+  abstraction:
+    query-performance-monitoring: false  # 测试环境关闭性能监控
+    health-check-enabled: false
+    pool-monitoring-enabled: false
+
+logging:
+  level:
+    com.ll.news.database: INFO
+    org.hibernate.SQL: WARN
+    org.springframework.jdbc.core: WARN
+
+---
+# 生产环境配置
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  datasource:
+    # 生产环境使用环境变量配置
+    url: ${PROD_DB_URL}
+    username: ${PROD_DB_USERNAME}
+    password: ${PROD_DB_PASSWORD}
+    type: ${PROD_DB_TYPE:neon}
+
+    hikari:
+      maximum-pool-size: ${PROD_DB_MAX_POOL_SIZE:50}
+      minimum-idle: ${PROD_DB_MIN_IDLE:10}
+      connection-timeout: ${PROD_DB_CONNECTION_TIMEOUT:20000}
+      idle-timeout: ${PROD_DB_IDLE_TIMEOUT:300000}
+      max-lifetime: ${PROD_DB_MAX_LIFETIME:1200000}
+      leak-detection-threshold: ${PROD_DB_LEAK_DETECTION_THRESHOLD:30000}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate  # 生产环境只验证，不自动更新
+    properties:
+      hibernate:
+        show_sql: false
+        format_sql: false
+        generate_statistics: false
+        cache:
+          use_second_level_cache: true
+          use_query_cache: true
+
+# 生产环境严格配置
+database:
+  abstraction:
+    query-performance-monitoring: true
+    slow-query-threshold: 500  # 生产环境更严格的慢查询阈值
+    health-check-enabled: true
+    health-check-interval: 10
+    pool-monitoring-enabled: true
+
+logging:
+  level:
+    com.ll.news.database: INFO
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
+    com.zaxxer.hikari: INFO
+
+  file:
+    name: /var/log/daily-news/database-abstraction.log
+    max-size: 100MB
+    max-history: 30
+
+# 严格的生产环境安全配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health  # 只暴露健康检查
+  endpoint:
+    health:
+      show-details: when-authorized
+      roles: ADMIN
+  security:
+    enabled: true
+
+---
+# Neon 云数据库专用配置
+spring:
+  config:
+    activate:
+      on-profile: neon
+
+  datasource:
+    type: neon
+    url: jdbc:postgresql://${NEON_HOST}:${NEON_PORT}/${NEON_DATABASE}?sslmode=require
+    username: ${NEON_USERNAME}
+    password: ${NEON_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+    hikari:
+      # Neon Serverless 特有配置
+      maximum-pool-size: 10  # Neon推荐较小的连接池
+      minimum-idle: 2
+      connection-timeout: 15000  # Neon冷启动可能需要更长时间
+      idle-timeout: 300000
+      max-lifetime: 600000  # 更短的生命周期，避免连接断开
+      leak-detection-threshold: 60000
+
+      data-source-properties:
+        # Neon 特有配置
+        ssl: true
+        sslmode: require
+        application_name: daily-news-app
+        socketTimeout: 20
+        connectTimeout: 15
+
+        # PostgreSQL 优化
+        stringtype: unspecified
+        reWriteBatchedInserts: true
+        defaultAutoCommit: false
+
+        # 连接保持
+        tcpKeepAlive: true
+
+# Neon 特有配置
+database:
+  abstraction:
+    # Neon 性能监控
+    query-performance-monitoring: true
+    slow-query-threshold: 800  # Neon 冷启动可能稍慢
+
+    # Neon 连接池优化
+    connection-pool:
+      idle-timeout: 5m
+      max-lifetime: 10m
+      validation-timeout: 5s
+      leak-detection-threshold: 30s
+
+    # Neon 自动扩缩容配置
+    auto-scaling:
+      enabled: true
+      min-compute: 0.25
+      max-compute: 2.0
+      scale-up-threshold: 80
+      scale-down-threshold: 20
+
+# Neon 监控配置
+management:
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      database-provider: neon
+      database-type: postgresql
+      deployment-type: serverless
+
+logging:
+  level:
+    com.ll.news.database: INFO
+    org.postgresql: WARN
+    com.zaxxer.hikari: INFO
+
+---
+# Docker 环境配置
+spring:
+  config:
+    activate:
+      on-profile: docker
+
+  datasource:
+    url: jdbc:mysql://mysql:3306/daily-news?useSSL=false&serverTimezone=UTC
+    username: ${DOCKER_DB_USERNAME:root}
+    password: ${DOCKER_DB_PASSWORD:root123}
+    type: mysql
+
+# Docker 网络配置
+database:
+  abstraction:
+    health-check-enabled: true
+    health-check-interval: 15
+    connection-timeout: 30000
+
+# Docker 日志配置
+logging:
+  level:
+    com.ll.news.database: DEBUG
+    org.springframework.jdbc.core: DEBUG
+
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+---
+# 本地开发配置（覆盖默认配置）
+spring:
+  config:
+    activate:
+      on-profile: local
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/daily-news?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: root
+    password: root123
+    type: mysql
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        show_sql: true
+        format_sql: true
+        use_sql_comments: true
+
+# 本地开发友好配置
+database:
+  abstraction:
+    query-performance-monitoring: true
+    slow-query-threshold: 1000
+    health-check-enabled: true
+    pool-monitoring-enabled: true
+
+logging:
+  level:
+    com.ll.news.database: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    com.zaxxer.hikari: DEBUG
+
+  file:
+    name: logs/local-database-abstraction.log
+    max-size: 50MB
+    max-history: 7
+
+---
+# 性能测试配置
+spring:
+  config:
+    activate:
+      on-profile: performance-test
+
+  datasource:
+    hikari:
+      maximum-pool-size: 100
+      minimum-idle: 20
+      connection-timeout: 5000
+      idle-timeout: 300000
+      max-lifetime: 1800000
+
+# 性能测试专用配置
+database:
+  abstraction:
+    query-performance-monitoring: true
+    slow-query-threshold: 100  # 非常严格的阈值
+
+    # 性能测试监控
+    performance-test:
+      enabled: true
+      sample-rate: 1.0  # 100%采样
+      output-dir: target/performance-results
+
+logging:
+  level:
+    com.ll.news.database: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.stat: DEBUG
+    com.zaxxer.hikari: DEBUG
+
+  file:
+    name: target/performance-test.log
+    max-size: 500MB
+    max-history: 1
+
+---
+# 灾难恢复配置
+spring:
+  config:
+    activate:
+      on-profile: disaster-recovery
+
+  datasource:
+    # 主数据库故障时切换到备用数据库
+    url: ${BACKUP_DB_URL}
+    username: ${BACKUP_DB_USERNAME}
+    password: ${BACKUP_DB_PASSWORD}
+    type: ${BACKUP_DB_TYPE}
+
+# 灾难恢复配置
+database:
+  abstraction:
+    disaster-recovery:
+      enabled: true
+      backup-database: true
+      read-only-mode: true
+      alert-enabled: true
+
+logging:
+  level:
+    com.ll.news.database: WARN
+    org.springframework.jdbc.core: WARN
+
+  file:
+    name: /backup/logs/database-recovery.log
+    max-size: 200MB
+    max-history: 90  # 保留90天日志
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics
+  endpoint:
+    health:
+      show-details: always
+      group:
+        custom:
+          include: database,ping,diskSpace
+          show-details: always
+
+---
+# 安全加固配置
+spring:
+  config:
+    activate:
+      on-profile: security-hardened
+
+  datasource:
+    # 使用SSL连接
+    url: ${SECURE_DB_URL}?ssl=true&sslmode=require
+    username: ${SECURE_DB_USERNAME}
+    password: ${SECURE_DB_PASSWORD}
+
+    hikari:
+      # 安全连接池配置
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 10000
+      validation-timeout: 3000
+      leak-detection-threshold: 15000
+
+      data-source-properties:
+        ssl: true
+        sslmode: require
+        sslcert: ${DB_SSL_CERT}
+        sslkey: ${DB_SSL_KEY}
+        sslrootcert: ${DB_SSL_ROOT_CERT}
+        # 强制SSL
+        requiressl: true
+
+# 安全加固配置
+database:
+  abstraction:
+    security:
+      enabled: true
+      encrypt-data: true
+      audit-logging: true
+      sql-injection-protection: true
+      connection-encryption: true
+
+logging:
+  level:
+    com.ll.news.database.security: DEBUG
+    org.springframework.security: DEBUG
+
+  file:
+    name: /secure/logs/database-security.log
+    max-size: 100MB
+    max-history: 365  # 保留一年安全日志
+
+# 严格的安全配置
+management:
+  security:
+    enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health
+      base-path: /admin
+  endpoint:
+    health:
+      show-details: never
+      roles: ADMIN
+
+  info:
+    git:
+      enabled: false
+    env:
+      enabled: false
+    build:
+      enabled: false
+
+# 安全配置
+spring:
+  security:
+    user:
+      name: ${SECURITY_USER_NAME}
+      password: ${SECURITY_USER_PASSWORD}
+      roles: ADMIN
+
+  datasource:
+    hikari:
+      data-source-properties:
+        # 额外的安全属性
+        logServerErrorDetail: false
+        logUnclosedConnections: true
+        assumeMinServerVersion: "9.0"  # 强制使用新版本协议
+
+---
+# 总结
+# 这个配置文件遵循KISS原则，提供了清晰、简单的数据库配置
+# 支持多种数据库类型，包括MySQL、PostgreSQL、Neon等
+# 每种环境都有专门的配置，确保在不同环境下的最佳性能和安全性
+# 所有敏感信息都通过环境变量注入，保证安全性
+# 配置结构清晰，易于理解和维护

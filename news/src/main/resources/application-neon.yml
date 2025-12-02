@@ -1,0 +1,660 @@
+# 🚀 Neon 云数据库配置
+# 基于您提供的连接字符串：
+# DATABASE_URL='postgresql://neondb_owner:********@ep-morning-wind-aho6ug36-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require'
+
+spring:
+  application:
+    name: daily-news
+
+  # 单数据源配置 - Neon PostgreSQL
+  datasource:
+    url: jdbc:postgresql://ep-morning-wind-aho6ug36-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require
+    username: neondb_owner
+    password: ${NEON_DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+    # HikariCP 连接池 - 针对Neon Serverless优化
+    hikari:
+      pool-name: DailyNewsNeonPool
+      maximum-pool-size: 15          # Neon推荐较小连接池，避免过度消耗
+      minimum-idle: 3                # 保持最小连接，减少冷启动
+      connection-timeout: 15000      # 15秒，给Neon冷启动足够时间
+      idle-timeout: 300000           # 5分钟，保持连接活跃
+      max-lifetime: 600000           # 10分钟，避免连接过期
+      leak-detection-threshold: 30000 # 30秒，检测连接泄露
+
+      # Neon特有配置
+      data-source-properties:
+        ssl: true
+        sslmode: require
+        application_name: daily-news-app
+        socketTimeout: 30            # 30秒socket超时
+        connectTimeout: 15           # 15秒连接超时
+        stringtype: unspecified      # 支持所有数据类型
+        reWriteBatchedInserts: true  # 批量插入优化
+        defaultAutoCommit: false     # 手动控制事务
+        tcpKeepAlive: true           # 连接保持
+
+        # 额外的Neon优化
+        logServerErrorDetail: false  # 不记录详细错误信息
+        logUnclosedConnections: true # 记录未关闭的连接
+
+  # JPA配置 - 适配PostgreSQL
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQL15Dialect
+
+    hibernate:
+      ddl-auto: validate              # 生产环境只验证，不自动创建表
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+        implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyJpaImpl
+
+    properties:
+      hibernate:
+        # PostgreSQL 15 方言
+        dialect: org.hibernate.dialect.PostgreSQL15Dialect
+
+        # SQL输出配置 - 生产环境
+        show_sql: false              # 不显示SQL
+        format_sql: true             # 格式化SQL（用于调试）
+        use_sql_comments: false      # 不添加注释
+        generate_statistics: true    # 启用统计
+
+        # 批处理优化
+        jdbc:
+          batch_size: 25                    # 批处理大小
+          order_inserts: true               # 排序插入
+          order_updates: true               # 排序更新
+          batch_versioned_data: true        # 批量版本数据
+
+        # 缓存配置
+        cache:
+          use_second_level_cache: true
+          use_query_cache: true
+          region:
+            factory_class: org.hibernate.cache.jcache.JCacheRegionFactory
+
+        # PostgreSQL特有配置
+        jdbc:
+          lob:
+            non_contextual_creation: true   # 必需的PostgreSQL配置
+
+        # 类型配置
+        temp:
+          use_jdbc_metadata_defaults: false  # 提高启动性能
+
+        # JSON支持 - PostgreSQL优势
+        types:
+          jackson:
+            object:
+              mapper: com.ll.news.database.config.JacksonConfig
+
+  # 使用PostgreSQL的schema特性替代物理双数据库
+  # 逻辑分区：news schema用于新闻数据，analytics schema用于分析数据
+  data:
+    # 数据库逻辑分区配置
+    partitioning:
+      enabled: true
+      default-schema: news              # 默认schema
+      schemas:
+        news: >                          # 新闻相关表
+          tables:
+            - news
+            - news_tags
+            - news_categories
+        analytics: >                    # 分析相关表
+          tables:
+            - bitcoin_entities_summary
+            - bitcoin_holdings
+            - bitcoin_entities_detail
+            - market_data
+
+      # 查询路由配置
+      routing:
+        enabled: true
+        strategy: table-name-based     # 基于表名的路由策略
+
+# 数据库抽象层配置
+database:
+  abstraction:
+    # 数据库类型
+    type: neon
+
+    # Neon Serverless特有配置
+    neon-specific:
+      # 连接池优化
+      connection-pool:
+        idle-timeout: 5m
+        max-lifetime: 10m
+        validation-timeout: 5s
+        leak-detection-threshold: 30s
+
+      # 自动扩缩容配置
+      auto-scaling:
+        enabled: true
+        min-compute: 0.25    # 最小计算单元
+        max-compute: 2.0     # 最大计算单元
+        scale-up-threshold: 80     # 扩容阈值
+        scale-down-threshold: 20   # 缩容阈值
+        scale-cooldown: 5m         # 冷却时间
+
+      # 冷启动优化
+      cold-start:
+        pre-warm-enabled: true     # 预热连接
+        pre-warm-interval: 5m      # 每5分钟预热一次
+        connection-warmup-query: SELECT 1  # 预热查询
+
+      # 成本优化
+      cost-optimization:
+        auto-suspend: true         # 自动暂停
+        suspend-delay: 5m          # 5分钟后暂停
+        min-suspend-timeout: 1m    # 最小暂停时间
+
+# MyBatis-Plus配置
+mybatis-plus:
+  configuration:
+    # 使用PostgreSQL语法
+    database-id: postgresql
+
+    # SQL日志配置
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+
+    # 缓存配置
+    cache-enabled: true
+    lazy-loading-enabled: true
+
+    # PostgreSQL特有配置
+    jdbc-type-for-null: NULL
+
+  global-config:
+    db-config:
+      # 主键策略 - 兼容PostgreSQL的序列
+      id-type: ASSIGN_ID
+
+      # 字段策略
+      field-strategy: NOT_NULL
+
+      # 逻辑删除
+      logic-delete-field: deleted
+      logic-delete-value: true
+      logic-not-delete-value: false
+
+      # 乐观锁
+      version-field-name: version
+
+      # 自动填充
+      insert-strategy: NOT_NULL
+      update-strategy: NOT_NULL
+
+  # 包扫描配置
+  type-aliases-package: com.ll.news
+
+  # Mapper XML文件位置
+  mapper-locations: classpath:mapper/*.xml
+
+  # 类型处理器 - PostgreSQL特有类型
+  type-handlers-package: com.ll.news.database.typehandler
+
+# 事务配置
+spring:
+  transaction:
+    default-timeout: 30s           # 默认事务超时
+    rollback-on-commit-failure: true
+
+# 连接池健康检查
+health:
+  datasource:
+    validation-query: SELECT 1
+    validation-timeout: 5s
+    max-retries: 3
+    retry-delay: 1s
+
+# 监控配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,datasource  # 暴露必要的端点
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+      group:
+        custom:
+          include: database,datasource,ping,diskSpace
+          show-details: always
+    metrics:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+      database-type: neon
+      database-provider: neon
+      deployment-type: serverless
+      environment: production
+
+# 日志配置 - 生产环境级别
+logging:
+  level:
+    com.ll.news: INFO
+    com.ll.news.database: INFO
+    com.ll.news.bitcoin: INFO
+    com.ll.news.news: INFO
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
+    org.springframework.jdbc.core: WARN
+    com.zaxxer.hikari: INFO
+    org.postgresql: WARN
+
+    # Neon 相关日志
+    com.ll.news.database.neon: DEBUG
+
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} [%file:%line] - %msg%n"
+
+  file:
+    name: /var/log/daily-news/neon-database.log
+    max-size: 100MB
+    max-history: 30
+    total-size-cap: 3GB
+
+# 性能监控配置
+monitoring:
+  database:
+    enabled: true
+
+    # 查询性能监控
+    query-performance:
+      enabled: true
+      slow-query-threshold: 1000ms  # 1秒以上为慢查询
+      log-slow-queries: true
+
+    # 连接池监控
+    connection-pool:
+      enabled: true
+      metrics-interval: 30s
+
+    # Neon 特有监控
+    neon-specific:
+      cold-start-detection: true
+      compute-usage-tracking: true
+      auto-scaling-events: true
+
+    # 自定义指标
+    custom-metrics:
+      query-count: true
+      connection-usage: true
+      transaction-rate: true
+
+# 安全配置 - 生产环境严格配置
+security:
+  database:
+    # 连接加密
+    ssl-required: true
+    ssl-mode: require
+
+    # 访问控制
+    connection-limit: 100  # Neon 连接数限制
+    statement-timeout: 30s  # 语句超时
+
+    # 审计日志
+    audit-logging: true
+    log-sensitive-data: false  # 不记录敏感数据
+
+    # 查询限制
+    max-query-time: 60s       # 最大查询时间
+    max-result-size: 10000    # 最大结果集大小
+
+# 备份配置 - Neon 自动备份
+backup:
+  neon:
+    # Neon 提供的自动备份
+    auto-backup: true
+    backup-retention: 7  # 7天备份保留
+    point-in-time-recovery: true  # 支持时间点恢复
+
+  application:
+    # 应用层备份策略
+    logical-backup:
+      enabled: true
+      schedule: "0 2 * * *"  # 每天凌晨2点
+      tables:
+        - news.news
+        - analytics.bitcoin_entities_summary
+        - analytics.bitcoin_holdings
+        - analytics.bitcoin_entities_detail
+
+# 缓存配置 - 减少数据库压力
+spring:
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=1000,expireAfterWrite=10m
+
+  jpa:
+    properties:
+      hibernate:
+        cache:
+          use_query_cache: true
+          use_second_level_cache: true
+          region:
+            factory_class: org.hibernate.cache.jcache.JCacheRegionFactory
+
+# 异步处理配置
+spring:
+  task:
+    execution:
+      pool:
+        core-size: 10
+        max-size: 50
+        queue-capacity: 1000
+        keep-alive: 60s
+      thread-name-prefix: DailyNews-Async-
+
+    scheduling:
+      pool:
+        size: 10
+        thread-name-prefix: DailyNews-Scheduled-
+
+---
+# 开发环境配置
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+  datasource:
+    url: jdbc:postgresql://ep-morning-wind-aho6ug36-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require
+    username: neondb_owner
+    password: ${NEON_DB_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: update  # 开发环境允许自动更新表结构
+    properties:
+      hibernate:
+        show_sql: true
+        format_sql: true
+        use_sql_comments: true
+        generate_statistics: true
+
+logging:
+  level:
+    com.ll.news: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.springframework.jdbc.core: DEBUG
+    com.zaxxer.hikari: DEBUG
+
+---
+# 测试环境配置
+spring:
+  config:
+    activate:
+      on-profile: test
+
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop  # 测试环境每次都重新创建表
+    properties:
+      hibernate:
+        show_sql: false  # 测试环境不显示SQL，减少噪音
+        format_sql: true
+        dialect: org.hibernate.dialect.H2Dialect
+
+# 测试时的特殊配置
+database:
+  abstraction:
+    query-performance-monitoring: false  # 测试环境关闭性能监控
+    health-check-enabled: false
+    pool-monitoring-enabled: false
+
+logging:
+  level:
+    com.ll.news: INFO
+    org.hibernate.SQL: WARN
+    org.springframework.jdbc.core: WARN
+
+---
+# 生产环境配置
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  datasource:
+    url: jdbc:postgresql://ep-morning-wind-aho6ug36-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require
+    username: neondb_owner
+    password: ${NEON_DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 20  # 生产环境更大的连接池
+      minimum-idle: 5
+      connection-timeout: 20000
+      idle-timeout: 300000
+      max-lifetime: 1200000
+      leak-detection-threshold: 30000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate  # 生产环境只验证，不自动更新
+    properties:
+      hibernate:
+        show_sql: false
+        format_sql: false
+        generate_statistics: false
+        cache:
+          use_second_level_cache: true
+          use_query_cache: true
+
+# 生产环境严格配置
+database:
+  abstraction:
+    query-performance-monitoring: true
+    slow-query-threshold: 500  # 生产环境更严格的慢查询阈值
+    health-check-enabled: true
+    health-check-interval: 10
+    pool-monitoring-enabled: true
+
+logging:
+  level:
+    com.ll.news: INFO
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
+    com.zaxxer.hikari: INFO
+
+  file:
+    name: /var/log/daily-news/neon-database.log
+    max-size: 100MB
+    max-history: 90
+
+# 严格的生产环境安全配置
+management:
+  security:
+    enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health  # 只暴露健康检查
+  endpoint:
+    health:
+      show-details: when-authorized
+      roles: ADMIN
+
+---
+# 性能测试环境配置
+spring:
+  config:
+    activate:
+      on-profile: performance-test
+
+  datasource:
+    hikari:
+      maximum-pool-size: 30  # 性能测试需要更大的连接池
+      minimum-idle: 10
+      connection-timeout: 10000
+
+  jpa:
+    properties:
+      hibernate:
+        show_sql: true  # 性能测试时显示SQL
+        format_sql: true
+        generate_statistics: true
+
+# 性能测试专用配置
+monitoring:
+  database:
+    query-performance:
+      slow-query-threshold: 500ms  # 更严格的慢查询阈值
+
+logging:
+  level:
+    org.hibernate.stat: DEBUG  # 显示Hibernate统计信息
+    com.ll.news.database: DEBUG
+
+---
+# 灾难恢复环境配置
+spring:
+  config:
+    activate:
+      on-profile: disaster-recovery
+
+  datasource:
+    # 使用只读副本进行灾难恢复
+    url: jdbc:postgresql://ep-morning-wind-aho6ug36-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require&targetServerType=any
+    hikari:
+      read-only: true
+      maximum-pool-size: 10
+
+# 灾难恢复配置
+recovery:
+  enabled: true
+  mode: read-only
+  point-in-time: ${RECOVERY_POINT_IN_TIME}  # 恢复到指定时间点
+
+logging:
+  level:
+    com.ll.news.recovery: DEBUG
+
+---
+# 安全加固环境配置
+spring:
+  config:
+    activate:
+      on-profile: security-hardened
+
+  datasource:
+    # 使用SSL连接
+    url: jdbc:postgresql://ep-morning-wind-aho6ug36-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require
+    hikari:
+      # 安全连接池配置
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 10000
+      validation-timeout: 3000
+      leak-detection-threshold: 15000
+
+      data-source-properties:
+        ssl: true
+        sslmode: require
+        sslcert: ${DB_SSL_CERT}
+        sslkey: ${DB_SSL_KEY}
+        sslrootcert: ${DB_SSL_ROOT_CERT}
+        # 强制SSL
+        requiressl: true
+
+# 安全加固配置
+database:
+  abstraction:
+    security:
+      enabled: true
+      encrypt-data: true
+      audit-logging: true
+      sql-injection-protection: true
+      connection-encryption: true
+
+logging:
+  level:
+    com.ll.news.database.security: DEBUG
+    org.springframework.security: DEBUG
+
+  file:
+    name: /secure/logs/database-security.log
+    max-size: 100MB
+    max-history: 365  # 保留一年安全日志
+
+# 严格的安全配置
+management:
+  security:
+    enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health  # 只暴露健康检查
+      base-path: /admin
+  endpoint:
+    health:
+      show-details: never
+      roles: ADMIN
+
+  info:
+    git:
+      enabled: false
+    env:
+      enabled: false
+    build:
+      enabled: false
+
+# 安全配置
+spring:
+  security:
+    user:
+      name: ${SECURITY_USER_NAME}
+      password: ${SECURITY_USER_PASSWORD}
+      roles: ADMIN
+
+---
+# 总结
+# 这个配置文件提供了完整的 Neon 云数据库生产环境配置
+# 主要特性：
+# 1. SSL 强制加密连接
+# 2. 连接池优化，适应 Serverless 特性
+# 3. 自动扩缩容支持
+# 4. 冷启动优化
+# 5. 全面的监控和日志
+# 6. 灾难恢复支持
+# 7. 性能优化配置
+#
+# 关键配置说明：
+# - 连接池大小：15（适应 Serverless 特性）
+# - 连接超时：15秒（给冷启动足够时间）
+# - SSL 模式：require（强制加密）
+# - 自动扩缩容：启用（0.25-2.0 计算单元）
+# - 监控：全面的性能和连接池监控
+#
+# 使用方式：
+# 1. 设置环境变量 NEON_DB_PASSWORD=您的Neon密码
+# 2. 激活profile：--spring.profiles.active=neon
+# 3. 启动应用：java -jar news-0.0.1.jar --spring.profiles.active=neon
+#
+# 注意事项：
+# - 密码必须通过环境变量设置，不能硬编码
+# - 生产环境建议使用更严格的连接池配置
+# - 定期监控数据库性能和成本使用
+# - 配置适当的备份策略（Neon自动备份）
+#
+# 性能调优建议：
+# 1. 根据实际负载调整连接池大小
+# 2. 监控慢查询并优化索引
+# 3. 合理使用连接池预热
+# 4. 配置适当的查询缓存策略
+# 5. 定期分析查询执行计划

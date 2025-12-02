@@ -10,6 +10,8 @@
     <modules>
         <module>drissonPage</module>
         <module>news</module>
+        <module>database-abstraction-layer</module>
+        <module>database-migration</module>
     </modules>
 
     <properties>
