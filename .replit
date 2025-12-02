@@ -7,11 +7,20 @@ deploymentTarget = "cloudrun"
 
 [env]
 JAVA_HOME = "/nix/store/5b2q2w1k9f5n3yqx4z1v6cxpb9h4lxmk-openjdk-17.0.12+7"
-MYSQL_ROOT_PASSWORD = "root123"
-MYSQL_DATABASE = "daily-news"
-MYSQL_USER = "root"
-MYSQL_PASSWORD = "root123"
+# 更新为 Neon PostgreSQL 配置，移除 MySQL 相关配置
+NEON_DB_PASSWORD = "${NEON_DB_PASSWORD}"
+DATABASE_URL = "postgresql://neondb_owner:${NEON_DB_PASSWORD}@ep-morning-wind-aho6ug36-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require"
 
-[ports]
-18095 = { external = true }
-3306 = { external = false }
+# 修复：使用正确的数组格式定义端口（从对象格式改为数组格式）
+[[ports]]
+port = 18095
+external = true
+
+[[ports]]
+port = 3306
+external = false
+
+# 新增：Neon PostgreSQL 默认端口
+[[ports]]
+port = 5432
+external = false
