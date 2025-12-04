@@ -1,0 +1,100 @@
+spring:
+  application:
+    name: daily-news-telegram-bot
+
+  # PostgreSQL数据库配置 - Neon云数据库
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://ep-morning-wind-aho6ug36-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require}
+    username: ${DB_USER:neondb_owner}
+    password: ${DB_PASSWORD:npg_yTrOujn8eKR5}
+    driver-class-name: org.postgresql.Driver
+
+    # HikariCP连接池配置 - 针对Neon优化
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 10000
+      idle-timeout: 300000
+      max-lifetime: 900000
+      leak-detection-threshold: 30000
+
+  # JPA配置
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update  # 生产环境使用update，避免自动删除表
+    properties:
+      hibernate:
+        show_sql: false
+        format_sql: true
+        jdbc:
+          batch_size: 25
+        order_inserts: true
+        order_updates: true
+
+# Telegram Bot配置
+app:
+  telegram:
+    token: ${TELEGRAM_TOKEN}  # 从环境变量读取，不再硬编码
+    chat-id: ${TELEGRAM_CHAT_ID:-1002191041553}
+    commands:
+      enabled: true
+      personalized: true
+      default-frequency: 30
+      max-keywords: 10
+      max-news-per-push: 5
+
+# 服务器配置
+server:
+  port: ${PORT:8080}  # 支持云平台的PORT环境变量
+
+# 日志配置
+logging:
+  level:
+    com.ll.news: INFO
+    com.ll.news.bot: DEBUG
+    org.hibernate.SQL: WARN
+    org.springframework.web: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# 监控配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+  health:
+    defaults:
+      enabled: true
+
+---
+# Replit部署专用配置
+spring:
+  config:
+    activate:
+      on-profile: replit
+
+  datasource:
+    url: ${DATABASE_URL}
+    hikari:
+      maximum-pool-size: 5  # Replit环境减小连接池
+      minimum-idle: 1
+      connection-timeout: 5000
+
+logging:
+  level:
+    com.ll.news: DEBUG
+    com.ll.news.bot: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"  # Replit环境全暴露便于调试

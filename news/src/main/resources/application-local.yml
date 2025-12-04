@@ -22,8 +22,14 @@ spring:
 
 app:
   telegram:
-    token: 7270949757:AAGM2BrMtVFpqNypOAS8PfIYHuvUTlYOM6Q
+    token: 8291537816:AAEQTE7Jd5AGQ9dkq7NMPewlSr8Kun2qXao  # 您的机器人token
     chatId: -1002191041553
+    commands:
+      enabled: true
+      personalized: true
+      default-frequency: 30  # 默认30分钟
+      max-keywords: 10
+      max-news-per-push: 5
 
 # 大额成交监听
 binance:

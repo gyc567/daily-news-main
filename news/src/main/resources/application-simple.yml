@@ -1,0 +1,105 @@
+spring:
+  application:
+    name: daily-news-telegram-bot
+
+  # 简化的Spring配置 - 使用内存数据库
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        show_sql: true
+        format_sql: true
+
+  # 异步执行配置
+  task:
+    execution:
+      pool:
+        core-size: 5
+        max-size: 10
+        queue-capacity: 100
+        keep-alive: 60s
+      thread-name-prefix: TelegramBot-
+
+# Telegram Bot配置
+app:
+  telegram:
+    token: ${TELEGRAM_TOKEN:8291537816:AAEQTE7Jd5AGQ9dkq7NMPewlSr8Kun2qXao}  # 您的机器人token
+    chatId: ${TELEGRAM_CHAT_ID:-1002191041553}
+    commands:
+      enabled: true
+      personalized: true
+      default-frequency: 30  # 默认30分钟
+      max-keywords: 10
+      max-news-per-push: 5
+
+# 日志配置
+logging:
+  level:
+    com.ll.news: INFO
+    com.ll.news.bot: DEBUG
+    org.springframework.web: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# 服务器配置
+server:
+  port: 8080
+
+---
+# 开发环境配置
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        show_sql: true
+        format_sql: true
+
+logging:
+  level:
+    com.ll.news: DEBUG
+    com.ll.news.bot: DEBUG
+    org.hibernate.SQL: DEBUG
+
+---
+# 生产环境配置
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        show_sql: false
+        format_sql: false
+
+logging:
+  level:
+    com.ll.news: INFO
+    org.hibernate.SQL: WARN
+
+# 生产环境安全配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: when-authorized

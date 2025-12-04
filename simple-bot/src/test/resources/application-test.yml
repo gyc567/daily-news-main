@@ -1,0 +1,60 @@
+# 测试环境配置 - 遵循KISS原则
+spring:
+  application:
+    name: daily-news-telegram-bot-test
+
+  # 内存数据库用于测试 - 简单高效
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+
+  # JPA配置
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop  # 测试环境每次都重新创建表
+    properties:
+      hibernate:
+        show_sql: true         # 测试时显示SQL
+        format_sql: true
+
+# 测试专用的Telegram配置
+app:
+  telegram:
+    token: "test_token_123456789"  # 测试token
+    chat-id: "-1"
+    commands:
+      enabled: true
+      personalized: true
+      default-frequency: 30
+      max-keywords: 10
+      max-news-per-push: 5
+
+# 日志配置
+logging:
+  level:
+    com.ll.news: DEBUG
+    com.ll.news.bot: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.springframework.test.context: DEBUG
+  pattern:
+    console: "[%d{HH:mm:ss.SSS}] [%thread] %-5level %logger{36} - %msg%n"
+
+# 测试专用配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"  # 测试环境全暴露
+  endpoint:
+    health:
+      show-details: always
+
+# 禁用某些测试时的自动配置
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration

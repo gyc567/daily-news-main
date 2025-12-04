@@ -1,0 +1,46 @@
+# Replit配置文件
+# 基于Linus原则：保持配置简单明了
+
+run = "mvn spring-boot:run -Dspring.profiles.active=replit -Dspring-boot.run.arguments=--server.port=8080"
+
+[env]
+# 环境变量配置
+JAVA_HOME = "/usr/lib/jvm/java-17-openjdk-amd64"
+TELEGRAM_TOKEN = "8291537816:AAEQTE7Jd5AGQ9dkq7NMPewlSr8Kun2qXao"
+TELEGRAM_CHAT_ID = "-1002191041553"
+DATABASE_URL = "postgresql://neondb_owner:npg_yTrOujn8eKR5@ep-morning-wind-aho6ug36-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require"
+DB_USER = "neondb_owner"
+DB_PASSWORD = "npg_yTrOujn8eKR5"
+
+[deployment]
+deploymentTarget = "cloudrun"
+build = ["mvn", "clean", "package", "-DskipTests"]
+run = ["java", "-jar", "target/daily-news-telegram-bot-1.0.0.jar", "--spring.profiles.active=replit", "--server.port=8080"]
+
+[nix]
+# 使用Java 17
+channel = "stable-22_11"
+
+[packager]
+language = "java"
+
+[packager.features]
+packageSearch = true
+guessImports = true
+
+[languages.java]
+pattern = "**/*.java"
+
+[languages.java.languageServer]
+start = ["mvn", "spring-boot:run", "-Dspring.profiles.active=replit"]
+
+[unitTest]
+language = "java"
+
+[debugger]
+support = true
+
+[debugger.interactive]
+transport = "localhost:0"
+connectTimeout = 60
+startCommand = ["mvn", "spring-boot:run", "-Dspring.profiles.active=replit", "-Dspring-boot.run.jvmArguments=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:8080"]

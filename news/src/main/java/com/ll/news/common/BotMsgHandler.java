@@ -1,5 +1,6 @@
 package com.ll.news.common;
 
+import com.ll.news.bot.TelegramCommandHandler;
 import com.pengrad.telegrambot.ExceptionHandler;
 import com.pengrad.telegrambot.TelegramBot;
 import com.pengrad.telegrambot.TelegramException;
@@ -31,6 +32,9 @@ public class BotMsgHandler {
     @Autowired
     TelegramBot bot;
 
+    @Autowired
+    private TelegramCommandHandler commandHandler;
+
     @PostConstruct
     public void init() {
 
@@ -39,6 +43,20 @@ public class BotMsgHandler {
             public int process(List<Update> updates) {
                 for (Update update : updates) {
                     try {
+                        // 优先处理消息命令
+                        if (update.hasMessage() && update.getMessage().hasText()) {
+                            Message message = update.getMessage();
+                            String text = message.text();
+
+                            // 处理以/开头的命令
+                            if (text != null && text.startsWith("/")) {
+                                log.info("收到命令：{}，来自用户：{}", text, message.from().id());
+                                commandHandler.handleCommand(message);
+                                continue;  // 命令处理完后继续处理下一个更新
+                            }
+                        }
+
+                        // 处理回调查询（原有功能）
                         CallbackQuery callbackQuery = update.callbackQuery();
                         if (Objects.nonNull(callbackQuery)) {
                             String data = callbackQuery.data();
@@ -50,7 +68,8 @@ public class BotMsgHandler {
                                 if (!Objects.equals(chatId, id.toString())) {
                                     continue;
                                 }
-                                if (maybeInaccessibleMessage instanceof Message msg) {
+                                if (maybeInaccessibleMessage instanceof Message) {
+                                    Message msg = (Message) maybeInaccessibleMessage;
 
                                     EditMessageText editedit = new EditMessageText(id, i, msg.text() + "\n\n" + "~等待接入AI~");
                                     editedit.parseMode(ParseMode.Markdown);
@@ -61,7 +80,7 @@ public class BotMsgHandler {
                             }
                         }
                     } catch (Exception e) {
-                        log.warn(e.getMessage());
+                        log.warn("处理更新时异常：{}", e.getMessage(), e);
                     }
                 }
                 return UpdatesListener.CONFIRMED_UPDATES_ALL;
